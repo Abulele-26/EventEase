@@ -1,0 +1,41 @@
+﻿@{
+    ViewData["Title"] = "EventEase Home";
+    var venues = ViewBag.Venues as List<EventEase.Models.Venue>;
+    var eventsList = ViewBag.Events as List<EventEase.Models.Event>;
+}
+
+<h1>Welcome to EventEase</h1>
+
+<h2>Available Venues</h2>
+<div class="row">
+    @foreach (var venue in venues)
+    {
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <img class="card-img-top" src="@venue.ImageURL" alt="@venue.Name" />
+                <div class="card-body">
+                    <h5 class="card-title">@venue.Name</h5>
+                    <p class="card-text">Location: @venue.Location</p>
+                    <p class="card-text">Capacity: @venue.Capacity</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<h2>Upcoming Events</h2>
+<div class="row">
+    @foreach (var ev in eventsList)
+    {
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <img class="card-img-top" src="@ev.ImageURL" alt="@ev.Name" />
+                <div class="card-body">
+                    <h5 class="card-title">@ev.Name</h5>
+                    <p class="card-text">Start: @ev.StartDate.ToShortDateString()</p>
+                    <p class="card-text">End: @ev.EndDate.ToShortDateString()</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>

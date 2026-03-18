@@ -1,0 +1,18 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace EventEase.Models
+{
+    public class Booking
+    {
+        public int BookingID { get; set; }
+
+        public int VenueID { get; set; }
+        public int EventID { get; set; }
+
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+
+        public Venue Venue { get; set; }
+        public Event Event { get; set; }
+    }
+}
