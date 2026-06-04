@@ -1,22 +1,25 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using EventEase.Data;
 using EventEase.Models;
+using EventEase.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventEase.Controllers
 {
     public class VenuesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly BlobService _blobService;
 
-        public VenuesController(ApplicationDbContext context)
+        public VenuesController(
+            ApplicationDbContext context,
+            BlobService blobService)
         {
             _context = context;
+            _blobService = blobService;
         }
 
         // GET: Venues
@@ -29,16 +32,13 @@ namespace EventEase.Controllers
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
             var venue = await _context.Venues
                 .FirstOrDefaultAsync(m => m.VenueID == id);
+
             if (venue == null)
-            {
                 return NotFound();
-            }
 
             return View(venue);
         }
@@ -50,86 +50,104 @@ namespace EventEase.Controllers
         }
 
         // POST: Venues/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("VenueID,Name,Location,Capacity,ImageURL")] Venue venue)
+        public async Task<IActionResult> Create(Venue venue)
         {
-            if (ModelState.IsValid)
+            try
             {
+                // IMPORTANT: show validation errors instead of silent failure
+                if (!ModelState.IsValid)
+                {
+                    return View(venue);
+                }
+
+                // IMAGE UPLOAD (Azurite / Blob Storage)
+                if (venue.ImageFile != null)
+                {
+                    venue.ImageURL = await _blobService.UploadFileAsync(venue.ImageFile);
+                }
+
                 _context.Add(venue);
                 await _context.SaveChangesAsync();
+
+                TempData["Success"] = "Venue created successfully.";
+
                 return RedirectToAction(nameof(Index));
             }
-            return View(venue);
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", "Error creating venue: " + ex.Message);
+                return View(venue);
+            }
         }
 
         // GET: Venues/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
             var venue = await _context.Venues.FindAsync(id);
+
             if (venue == null)
-            {
                 return NotFound();
-            }
+
             return View(venue);
         }
 
         // POST: Venues/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("VenueID,Name,Location,Capacity,ImageURL")] Venue venue)
+        public async Task<IActionResult> Edit(int id, Venue venue)
         {
             if (id != venue.VenueID)
-            {
                 return NotFound();
-            }
 
-            if (ModelState.IsValid)
+            try
             {
-                try
+                if (!ModelState.IsValid)
                 {
-                    _context.Update(venue);
-                    await _context.SaveChangesAsync();
+                    return View(venue);
                 }
-                catch (DbUpdateConcurrencyException)
+
+                if (venue.ImageFile != null)
                 {
-                    if (!VenueExists(venue.VenueID))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    venue.ImageURL = await _blobService.UploadFileAsync(venue.ImageFile);
                 }
+
+                _context.Update(venue);
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = "Venue updated successfully.";
+
                 return RedirectToAction(nameof(Index));
             }
-            return View(venue);
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!VenueExists(venue.VenueID))
+                    return NotFound();
+
+                throw;
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", "Error updating venue: " + ex.Message);
+                return View(venue);
+            }
         }
 
         // GET: Venues/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
             var venue = await _context.Venues
                 .FirstOrDefaultAsync(m => m.VenueID == id);
+
             if (venue == null)
-            {
                 return NotFound();
-            }
 
             return View(venue);
         }
@@ -139,13 +157,25 @@ namespace EventEase.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
+            bool hasBookings = await _context.Bookings
+                .AnyAsync(b => b.VenueID == id);
+
+            if (hasBookings)
+            {
+                TempData["Error"] = "Cannot delete venue with active bookings.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var venue = await _context.Venues.FindAsync(id);
+
             if (venue != null)
             {
                 _context.Venues.Remove(venue);
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = "Venue deleted successfully.";
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 

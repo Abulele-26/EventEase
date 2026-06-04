@@ -12,19 +12,16 @@ namespace EventEase.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Events",
+                name: "EventTypes",
                 columns: table => new
                 {
-                    EventID = table.Column<int>(type: "int", nullable: false)
+                    EventTypeID = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ImageURL = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    TypeName = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Events", x => x.EventID);
+                    table.PrimaryKey("PK_EventTypes", x => x.EventTypeID);
                 });
 
             migrationBuilder.CreateTable(
@@ -36,11 +33,34 @@ namespace EventEase.Migrations
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Location = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Capacity = table.Column<int>(type: "int", nullable: false),
-                    ImageURL = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    ImageURL = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Venues", x => x.VenueID);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Events",
+                columns: table => new
+                {
+                    EventID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ImageURL = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    EventTypeID = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Events", x => x.EventID);
+                    table.ForeignKey(
+                        name: "FK_Events_EventTypes_EventTypeID",
+                        column: x => x.EventTypeID,
+                        principalTable: "EventTypes",
+                        principalColumn: "EventTypeID",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -80,6 +100,11 @@ namespace EventEase.Migrations
                 name: "IX_Bookings_VenueID",
                 table: "Bookings",
                 column: "VenueID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Events_EventTypeID",
+                table: "Events",
+                column: "EventTypeID");
         }
 
         /// <inheritdoc />
@@ -93,6 +118,9 @@ namespace EventEase.Migrations
 
             migrationBuilder.DropTable(
                 name: "Venues");
+
+            migrationBuilder.DropTable(
+                name: "EventTypes");
         }
     }
 }

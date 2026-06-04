@@ -17,7 +17,7 @@ namespace EventEase.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "8.0.22")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -62,8 +62,10 @@ namespace EventEase.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("EventTypeID")
+                        .HasColumnType("int");
+
                     b.Property<string>("ImageURL")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
@@ -75,7 +77,26 @@ namespace EventEase.Migrations
 
                     b.HasKey("EventID");
 
+                    b.HasIndex("EventTypeID");
+
                     b.ToTable("Events");
+                });
+
+            modelBuilder.Entity("EventEase.Models.EventType", b =>
+                {
+                    b.Property<int>("EventTypeID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EventTypeID"));
+
+                    b.Property<string>("TypeName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("EventTypeID");
+
+                    b.ToTable("EventTypes");
                 });
 
             modelBuilder.Entity("EventEase.Models.Venue", b =>
@@ -90,7 +111,6 @@ namespace EventEase.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("ImageURL")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Location")
@@ -109,13 +129,13 @@ namespace EventEase.Migrations
             modelBuilder.Entity("EventEase.Models.Booking", b =>
                 {
                     b.HasOne("EventEase.Models.Event", "Event")
-                        .WithMany()
+                        .WithMany("Bookings")
                         .HasForeignKey("EventID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("EventEase.Models.Venue", "Venue")
-                        .WithMany()
+                        .WithMany("Bookings")
                         .HasForeignKey("VenueID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -123,6 +143,27 @@ namespace EventEase.Migrations
                     b.Navigation("Event");
 
                     b.Navigation("Venue");
+                });
+
+            modelBuilder.Entity("EventEase.Models.Event", b =>
+                {
+                    b.HasOne("EventEase.Models.EventType", "EventType")
+                        .WithMany()
+                        .HasForeignKey("EventTypeID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EventType");
+                });
+
+            modelBuilder.Entity("EventEase.Models.Event", b =>
+                {
+                    b.Navigation("Bookings");
+                });
+
+            modelBuilder.Entity("EventEase.Models.Venue", b =>
+                {
+                    b.Navigation("Bookings");
                 });
 #pragma warning restore 612, 618
         }

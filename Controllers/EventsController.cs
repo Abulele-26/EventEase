@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using EventEase.Data;
+using EventEase.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using EventEase.Data;
-using EventEase.Models;
 
 namespace EventEase.Controllers
 {
@@ -19,13 +15,60 @@ namespace EventEase.Controllers
             _context = context;
         }
 
-        // GET: Events
-        public async Task<IActionResult> Index()
+        // ===================================================
+        // INDEX + SEARCH + FILTERING
+        // ===================================================
+        public async Task<IActionResult> Index(
+            string searchString,
+            int? eventTypeId,
+            DateTime? startDate,
+            DateTime? endDate)
         {
-            return View(await _context.Events.ToListAsync());
+            var events = _context.Events
+                .Include(e => e.EventType)
+                .AsQueryable();
+
+            // SEARCH BY EVENT NAME
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                events = events.Where(e =>
+                    e.Name.Contains(searchString));
+            }
+
+            // EVENT TYPE FILTER
+            if (eventTypeId.HasValue)
+            {
+                events = events.Where(e =>
+                    e.EventTypeID == eventTypeId);
+            }
+
+            // START DATE FILTER
+            if (startDate.HasValue)
+            {
+                events = events.Where(e =>
+                    e.StartDate >= startDate);
+            }
+
+            // END DATE FILTER
+            if (endDate.HasValue)
+            {
+                events = events.Where(e =>
+                    e.EndDate <= endDate);
+            }
+
+            // DROPDOWN DATA
+            ViewBag.EventTypeID =
+                new SelectList(
+                    _context.EventTypes,
+                    "EventTypeID",
+                    "TypeName");
+
+            return View(await events.ToListAsync());
         }
 
-        // GET: Events/Details/5
+        // ===================================================
+        // DETAILS
+        // ===================================================
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -34,7 +77,9 @@ namespace EventEase.Controllers
             }
 
             var @event = await _context.Events
+                .Include(e => e.EventType)
                 .FirstOrDefaultAsync(m => m.EventID == id);
+
             if (@event == null)
             {
                 return NotFound();
@@ -43,29 +88,52 @@ namespace EventEase.Controllers
             return View(@event);
         }
 
-        // GET: Events/Create
+        // ===================================================
+        // CREATE GET
+        // ===================================================
         public IActionResult Create()
         {
+            ViewData["EventTypeID"] =
+                new SelectList(
+                    _context.EventTypes,
+                    "EventTypeID",
+                    "TypeName");
+
             return View();
         }
 
-        // POST: Events/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        // ===================================================
+        // CREATE POST
+        // ===================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("EventID,Name,StartDate,EndDate,ImageURL")] Event @event)
+        public async Task<IActionResult> Create(Event @event)
         {
             if (ModelState.IsValid)
             {
                 _context.Add(@event);
+
                 await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] =
+                    "Event created successfully.";
+
                 return RedirectToAction(nameof(Index));
             }
+
+            ViewData["EventTypeID"] =
+                new SelectList(
+                    _context.EventTypes,
+                    "EventTypeID",
+                    "TypeName",
+                    @event.EventTypeID);
+
             return View(@event);
         }
 
-        // GET: Events/Edit/5
+        // ===================================================
+        // EDIT GET
+        // ===================================================
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -73,20 +141,32 @@ namespace EventEase.Controllers
                 return NotFound();
             }
 
-            var @event = await _context.Events.FindAsync(id);
+            var @event =
+                await _context.Events.FindAsync(id);
+
             if (@event == null)
             {
                 return NotFound();
             }
+
+            ViewData["EventTypeID"] =
+                new SelectList(
+                    _context.EventTypes,
+                    "EventTypeID",
+                    "TypeName",
+                    @event.EventTypeID);
+
             return View(@event);
         }
 
-        // POST: Events/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        // ===================================================
+        // EDIT POST
+        // ===================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("EventID,Name,StartDate,EndDate,ImageURL")] Event @event)
+        public async Task<IActionResult> Edit(
+            int id,
+            Event @event)
         {
             if (id != @event.EventID)
             {
@@ -98,7 +178,11 @@ namespace EventEase.Controllers
                 try
                 {
                     _context.Update(@event);
+
                     await _context.SaveChangesAsync();
+
+                    TempData["SuccessMessage"] =
+                        "Event updated successfully.";
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -106,17 +190,26 @@ namespace EventEase.Controllers
                     {
                         return NotFound();
                     }
-                    else
-                    {
-                        throw;
-                    }
+
+                    throw;
                 }
+
                 return RedirectToAction(nameof(Index));
             }
+
+            ViewData["EventTypeID"] =
+                new SelectList(
+                    _context.EventTypes,
+                    "EventTypeID",
+                    "TypeName",
+                    @event.EventTypeID);
+
             return View(@event);
         }
 
-        // GET: Events/Delete/5
+        // ===================================================
+        // DELETE GET
+        // ===================================================
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -125,7 +218,9 @@ namespace EventEase.Controllers
             }
 
             var @event = await _context.Events
+                .Include(e => e.EventType)
                 .FirstOrDefaultAsync(m => m.EventID == id);
+
             if (@event == null)
             {
                 return NotFound();
@@ -134,24 +229,48 @@ namespace EventEase.Controllers
             return View(@event);
         }
 
-        // POST: Events/Delete/5
+        // ===================================================
+        // DELETE POST
+        // ===================================================
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var @event = await _context.Events.FindAsync(id);
+            var @event =
+                await _context.Events.FindAsync(id);
+
+            bool hasBookings =
+                await _context.Bookings
+                .AnyAsync(b => b.EventID == id);
+
+            if (hasBookings)
+            {
+                TempData["ErrorMessage"] =
+                    "Cannot delete event because it has active bookings.";
+
+                return RedirectToAction(nameof(Index));
+            }
+
             if (@event != null)
             {
                 _context.Events.Remove(@event);
+
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] =
+                    "Event deleted successfully.";
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
+        // ===================================================
+        // EXISTS
+        // ===================================================
         private bool EventExists(int id)
         {
-            return _context.Events.Any(e => e.EventID == id);
+            return _context.Events.Any(e =>
+                e.EventID == id);
         }
     }
 }

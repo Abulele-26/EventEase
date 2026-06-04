@@ -1,4 +1,6 @@
 ﻿using EventEase.Data;
+using EventEase.Models;
+using EventEase.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventEase
@@ -9,16 +11,42 @@ namespace EventEase
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // ✅ Add services to the container.
+            // MVC
             builder.Services.AddControllersWithViews();
 
-            // ✅ ADD THIS (Database Connection)
+            // Blob Storage
+            builder.Services.AddScoped<BlobService>();
+
+            // Database
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("DefaultConnection")));
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            // SEED EVENT TYPES
+            using (var scope = app.Services.CreateScope())
+            {
+                var context = scope.ServiceProvider
+                    .GetRequiredService<ApplicationDbContext>();
+
+                context.Database.Migrate();
+
+                if (!context.EventTypes.Any())
+                {
+                    context.EventTypes.AddRange(
+                        new EventType { TypeName = "Wedding" },
+                        new EventType { TypeName = "Conference" },
+                        new EventType { TypeName = "Birthday" },
+                        new EventType { TypeName = "Concert" },
+                        new EventType { TypeName = "Corporate" }
+                    );
+
+                    context.SaveChanges();
+                }
+            }
+
+            // HTTP pipeline
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Home/Error");
@@ -26,15 +54,13 @@ namespace EventEase
             }
 
             app.UseHttpsRedirection();
+            app.UseStaticFiles();   // IMPORTANT (replaces MapStaticAssets)
             app.UseRouting();
-
             app.UseAuthorization();
 
-            app.MapStaticAssets();
             app.MapControllerRoute(
                 name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}")
-                .WithStaticAssets();
+                pattern: "{controller=Home}/{action=Index}/{id?}");
 
             app.Run();
         }
